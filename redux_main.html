@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+    <html>
+        <head>
+            <!--redux 객체 생성-->
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/redux/4.0.1/redux.js"></script>
+        </head>
+        <body>
+            <div id="subject"></div>
+            <div id="toc"></div>
+            <div id="control"></div>
+            <div id="content"></div>
+            <script>
+        function subject() {
+            document.querySelector('#subject').innerHTML = `
+                <header>
+                    <h1>WEB</h1>
+                    Hello, WEB!
+                </header>
+                `;
+        }
+        function TOC() { // table of contents - 목차
+            var state = store.getState();
+            var i = 0;
+            var liTags = '';
+            while(i<state.contents.length){
+                liTags = liTags + `
+                    <li>
+                        <a onclick=
+                            "event.preventDefault();
+                            var action = {type:'SELECT', id:${state.contents[i].id}}
+                            store.dispatch(action);"
+                            href="${state.contents[i].id}">
+                            ${state.contents[i].title}
+                        </a>   
+                    </li>`;
+                i = i + 1;
+            }
+            // dispatch 시 store는 reducer를 호출한다.
+
+            document.querySelector('#toc').innerHTML = `
+                <nav>
+                    <ol>
+                        ${liTags}
+                    </ol>
+                </nav>
+                `;
+        }
+        function control() {
+            document.querySelector('#control').innerHTML = `
+                <ul>
+                    <li><a onclick="event.preventDefault();"
+                        href="/create">create</a></li>
+                    <li><input type="button" value="delete"></li>
+                </ul>
+                `;
+        }
+        function article(){
+            var state = store.getState();
+            if(state.mode === 'create'){
+                document.querySelector('#content').innerHTML = `
+                <article>
+                    <!--event.preventDefault(); : 기본적인 동작 차단-->
+                    <form onsubmit="event.preventDefault();
+                        var _title = this.title.value;
+                        var _desc = this.desc.value;
+                        console.log(title);
+                        store.dispatch({
+                            type:'CREATE',
+                            title:_title,
+                            desc:_desc
+                        })
+                    ">
+                        <p>
+                            <input type="text" name="title" placeholder="title">
+                        </p>
+                        <p>
+                            <textarea name="desc" placeholder="description"></textarea>
+                        </p>
+                        <p>
+                            <input type="submit">
+                        </p>
+                    </form>
+                </article>
+                `
+            } else if(state.mode === 'read'){
+                var i = 0;
+                var aTitle, aDesc;
+                while(i < state.contents.length){
+                    if(state.contents[i].id === state.selcted_id) {
+                        aTitle = state.contents[i].title;
+                        aDesc = state.contents[i].desc;
+                        break;
+                    }
+                    i = i + 1;
+                }
+            document.querySelector('#content').innerHTML = `
+                <article>
+                    <h2>${aTitle}</h2>
+                    ${aDesc}
+                </article>
+                `
+            }
+        }
+        function reducer(state, action){
+            console.log(state, action);
+            // 우리가 store를 처음 생성하면 최초 1회 action과는 상관없이 호출이되는데
+            // 그떄 state값은 undefined니까 그때 초기값을 세팅하는 조건문을 만들어줘야한다.
+            if (state === undefined){
+                return {
+                    max_id:2,
+                    mode:'create',
+                    //selected_id:null,
+                    selected_id:1,
+                    contents:[
+                        {id:1, title:'HTML', desc:'HTML is ..'},
+                        {id:2, title:'CSS', desc:'CSS is ..'}
+                    ]
+                }
+            }
+            var newState;
+            if(action.type === 'SELECT'){
+                newState = Object.assign({}, state, {selected_id:action.id}); // state값이 복제되고 빈 객체에 들어가고 그게 newState가 된다.
+            } else if(action.type === 'CREATE'){
+                var newContents = state.contents.concat(); // 기존에 있던 배열 그대로 복사.
+                var newMaxId = state.max_id + 1;
+                newContents.push({
+                    id:newMaxId,
+                    title:action.title,
+                    desc:action.desc
+                })
+                // 기존 state 복사
+                newState = Object.assign({}, state, {
+                    max_id:newMaxId,
+                    contents:newContents,
+                    mode:'read'
+                })
+            }
+            console.log(action, state, newState);
+            return newState;
+        }
+        // Redux.createStore(reducer); // createStore의 입력값으로 reducer를 준다.
+        var store = Redux.createStore(reducer); // application 전역에서 사용할 수 있도록 만들어준다.
+        store.subscribe(article);
+        store.subscribe(TOC);
+
+        subject();
+        TOC();
+        control();
+        article(); // state값이 바뀌었을때 자동으로 article 함수가 실행되도록 subscribe 해준다.
+        </script>
+    </body>
+</html>
