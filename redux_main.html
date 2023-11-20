@@ -10,6 +10,7 @@
             <div id="control"></div>
             <div id="content"></div>
             <script>
+        //---------------------------------------------------------------------------------------
         function subject() {
             document.querySelector('#subject').innerHTML = `
                 <header>
@@ -18,11 +19,12 @@
                 </header>
                 `;
         }
+        //---------------------------------------------------------------------------------------
         function TOC() { // table of contents - 목차
             var state = store.getState();
             var i = 0;
             var liTags = '';
-            while(i<state.contents.length){
+            while(i < state.contents.length){
                 liTags = liTags + `
                     <li>
                         <a onclick=
@@ -45,15 +47,27 @@
                 </nav>
                 `;
         }
+        //---------------------------------------------------------------------------------------
         function control() {
             document.querySelector('#control').innerHTML = `
                 <ul>
-                    <li><a onclick="event.preventDefault();"
-                        href="/create">create</a></li>
-                    <li><input type="button" value="delete"></li>
+                    <li>
+                        <a onclick="event.preventDefault();
+                        store.dispatch({
+                            type:'CHANGE_MODE',
+                            mode:'create'
+                        })
+                        "href="/create">create</a>
+                    </li>
+                    <li>
+                        <input onclick="store.dispatch({
+                            type:'DELETE'
+                        });" type="button" value="delete">
+                    </li>
                 </ul>
                 `;
         }
+        //---------------------------------------------------------------------------------------
         function article(){
             var state = store.getState();
             if(state.mode === 'create'){
@@ -71,6 +85,7 @@
                         })
                     ">
                         <p>
+                            <!--아무것도 입력하지 않을때 나오는 도움말-->
                             <input type="text" name="title" placeholder="title">
                         </p>
                         <p>
@@ -86,29 +101,37 @@
                 var i = 0;
                 var aTitle, aDesc;
                 while(i < state.contents.length){
-                    if(state.contents[i].id === state.selcted_id) {
+                    if(state.contents[i].id === state.selected_id) {
                         aTitle = state.contents[i].title;
                         aDesc = state.contents[i].desc;
                         break;
                     }
                     i = i + 1;
                 }
-            document.querySelector('#content').innerHTML = `
+                document.querySelector('#content').innerHTML = `
                 <article>
                     <h2>${aTitle}</h2>
                     ${aDesc}
                 </article>
                 `
+            } else if(state.mode === 'welcome'){
+                document.querySelector('#content').innerHTML=`
+                <article>
+                    <h2>Welcome</h2>
+                    Hello, Redux!!!
+                </article>
+                `
             }
         }
+        //---------------------------------------------------------------------------------------
         function reducer(state, action){
             console.log(state, action);
             // 우리가 store를 처음 생성하면 최초 1회 action과는 상관없이 호출이되는데
-            // 그떄 state값은 undefined니까 그때 초기값을 세팅하는 조건문을 만들어줘야한다.
+            // 그때 state값은 undefined니까 그때 초기값을 세팅하는 조건문을 만들어줘야한다.
             if (state === undefined){
                 return {
                     max_id:2,
-                    mode:'create',
+                    mode:'welcome',
                     //selected_id:null,
                     selected_id:1,
                     contents:[
@@ -119,7 +142,10 @@
             }
             var newState;
             if(action.type === 'SELECT'){
-                newState = Object.assign({}, state, {selected_id:action.id}); // state값이 복제되고 빈 객체에 들어가고 그게 newState가 된다.
+                newState = Object.assign(
+                    {},
+                    state,
+                    {selected_id:action.id, mode:'read'}); // state값이 복제되고 빈 객체에 들어가고 그게 newState가 된다.
             } else if(action.type === 'CREATE'){
                 var newContents = state.contents.concat(); // 기존에 있던 배열 그대로 복사.
                 var newMaxId = state.max_id + 1;
@@ -134,14 +160,33 @@
                     contents:newContents,
                     mode:'read'
                 })
+            } else if(action.type === 'DELETE'){
+                var newContents = [];
+                var i = 0;
+                while(i < state.contents.length){
+                    if(state.selected_id !== state.contents[i].id){
+                        newContents.push(
+                            state.contents[i]
+                        );
+                    }
+                    i = i + 1;
+                }
+                newState = Object.assign({},state,{
+                    contents:newContents,
+                    mode:'welcome'
+                })
+            } else if(action.type === 'CHANGE_MODE'){
+                newState = Object.assign({}, state, {
+                    mode:action.mode
+                });
             }
             console.log(action, state, newState);
             return newState;
         }
         // Redux.createStore(reducer); // createStore의 입력값으로 reducer를 준다.
         var store = Redux.createStore(reducer); // application 전역에서 사용할 수 있도록 만들어준다.
-        store.subscribe(article);
-        store.subscribe(TOC);
+        store.subscribe(article); // state가 바꼈을때 refresh
+        store.subscribe(TOC); // state가 바꼈을때 refresh
 
         subject();
         TOC();
